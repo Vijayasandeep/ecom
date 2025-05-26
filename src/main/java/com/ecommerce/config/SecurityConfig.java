@@ -76,8 +76,18 @@ public class SecurityConfig {
                         // Moderator and Admin endpoints
                         .requestMatchers("/api/moderator/**").hasAnyRole("SELLER", "ADMIN")
                         // User endpoints (authenticated users)
-                        .requestMatchers("/api/user/**").hasAnyRole("USER", "SELLER", "ADMIN")
+                        .requestMatchers("/api/user/**").permitAll()
+                        .requestMatchers(
+                                "/v2/api-docs",
+                                "/v3/api-docs/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/swagger-resources/**",
+                                "/webjars/**",
+                                "/error"
+                        ).permitAll()
                         // All other requests need authentication
+                        .requestMatchers("/swagger-ui.html").permitAll()
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex.authenticationEntryPoint(jwtAuthenticationEntryPoint))

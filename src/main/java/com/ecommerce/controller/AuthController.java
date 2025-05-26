@@ -43,15 +43,18 @@ public class AuthController {
     @PostMapping("/signin")
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
         try {
+            System.out.println("LoginRequest: " + loginRequest.getEmail() + " / " + loginRequest.getPassword());
+
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
-                            loginRequest.getUsername(),
+                            loginRequest.getEmail(),
                             loginRequest.getPassword()
                     )
             );
-
+            String username = authentication.getName();
             SecurityContextHolder.getContext().setAuthentication(authentication);
-            User userPrincipal = (User) authentication.getPrincipal();
+            User userPrincipal = userRepository.findByEmail(username)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
 
             String jwt = jwtUtil.generateToken(userPrincipal);
             String refreshToken = jwtUtil.generateRefreshToken(userPrincipal);
@@ -65,9 +68,12 @@ public class AuthController {
                     userPrincipal.getAuthorities()
             ));
         } catch (Exception e) {
-            return ResponseEntity.badRequest()
+            e.printStackTrace();  // This will help debug
+            return ResponseEntity
+                    .badRequest()
                     .body(new MessageResponse("Error: Invalid credentials"));
         }
+
     }
 
     @PostMapping("/signup")

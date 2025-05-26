@@ -17,7 +17,7 @@
 //        Map<String, Object> claims = new HashMap<>();
 //        return Jwts.builder()
 //                .setClaims(claims)
-//                .setSubject(userDetails.getUsername())
+//                .setSubject(userDetails.getEmail())
 //                .setIssuedAt(new Date(System.currentTimeMillis()))
 //                .setExpiration(new Date(System.currentTimeMillis() + JWT_TOKEN_VALIDITY * 1000))
 //                .signWith(SignatureAlgorithm.HS512, SECRET_KEY)
@@ -26,7 +26,7 @@
 //
 //    public Boolean validateToken(String token, UserDetails userDetails) {
 //        final String username = extractUsername(token);
-//        return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
+//        return (username.equals(userDetails.getEmail()) && !isTokenExpired(token));
 //    }
 //
 //    public String extractUsername(String token) {
