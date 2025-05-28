@@ -25,6 +25,7 @@ import java.util.Set;
 
 @RestController
 @RequestMapping("/api/auth")
+@ResponseBody
 @CrossOrigin(origins = "*", maxAge = 3600)
 public class AuthController {
 
@@ -117,7 +118,7 @@ public class AuthController {
             });
         }
 
-        user.setRoles(Set.of(Role.ROLE_USER));// Make sure `user.setRoles()` accepts `Set<Role>`
+        user.setRoles(roles);// Make sure `user.setRoles()` accepts `Set<Role>`
         userRepository.save(user);
 
         return ResponseEntity.ok(new MessageResponse("User registered successfully!"));
