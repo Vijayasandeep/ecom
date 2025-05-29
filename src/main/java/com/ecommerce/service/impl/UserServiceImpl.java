@@ -11,6 +11,7 @@ import com.ecommerce.exception.ResourceNotFoundException;
 import com.ecommerce.repository.UserRepository;
 import com.ecommerce.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -99,8 +100,13 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<User> getUserByEmail(String email) {
-        return userRepository.findByEmail(email);
+    public User getUserByEmail(String email) throws UsernameNotFoundException {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
+
+        // CRITICAL: Return your custom User entity directly
+        // Do NOT create a new Spring Security User object
+        return user;
     }
 
     @Override

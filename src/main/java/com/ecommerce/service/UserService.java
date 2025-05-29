@@ -23,7 +23,7 @@ public interface UserService {
 
     // User retrieval
     Optional<User> getUserById(Long userId);
-    Optional<User> getUserByEmail(String email);
+    User getUserByEmail(String email);
     List<User> getAllUsers();
 
     // Address management

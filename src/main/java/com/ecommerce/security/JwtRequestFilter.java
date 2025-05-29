@@ -33,6 +33,7 @@ public class JwtRequestFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
             return;
         }
+
         final String requestTokenHeader = request.getHeader("Authorization");
 
         String username = null;

@@ -1,4 +1,5 @@
 package com.ecommerce.security;
+
 import com.ecommerce.entity.CustomOAuth2User;
 import com.ecommerce.util.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
@@ -22,16 +23,39 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
                                         HttpServletResponse response,
                                         Authentication authentication) throws IOException {
 
-        CustomOAuth2User oauth2User = (CustomOAuth2User) authentication.getPrincipal();
+        System.out.println("=== OAuth2AuthenticationSuccessHandler CALLED ===");
+        System.out.println("Authentication class: " + authentication.getClass().getSimpleName());
+        System.out.println("Authentication name: " + authentication.getName());
+        System.out.println("Is authenticated: " + authentication.isAuthenticated());
+        System.out.println("Principal class: " + authentication.getPrincipal().getClass().getSimpleName());
 
-        String token = jwtUtil.generateToken(oauth2User.getUser());
-        String refreshToken = jwtUtil.generateRefreshToken(oauth2User.getUser());
+        try {
+            CustomOAuth2User oauth2User = (CustomOAuth2User) authentication.getPrincipal();
+            System.out.println("CustomOAuth2User email: " + oauth2User.getEmail());
+            System.out.println("User from database ID: " + oauth2User.getUser().getId());
 
-        String targetUrl = UriComponentsBuilder.fromUriString("http://localhost:3000/auth/callback")
-                .queryParam("token", token)
-                .queryParam("refreshToken", refreshToken)
-                .build().toUriString();
+            System.out.println("Generating JWT tokens...");
+            String token = jwtUtil.generateToken(oauth2User.getUser());
+            String refreshToken = jwtUtil.generateRefreshToken(oauth2User.getUser());
+            System.out.println("✅ JWT tokens generated successfully");
+            System.out.println("Token length: " + token.length());
 
-        getRedirectStrategy().sendRedirect(request, response, targetUrl);
+            String targetUrl = UriComponentsBuilder.fromUriString("/debug/auth-detailed")
+//                    .queryParam("token", token)
+//                    .queryParam("refreshToken", refreshToken)
+                    .build().toUriString();
+
+            System.out.println("Redirecting to: " + targetUrl);
+            getRedirectStrategy().sendRedirect(request, response, targetUrl);
+            System.out.println("✅ Redirect completed successfully");
+
+        } catch (Exception e) {
+            System.err.println("❌ ERROR in OAuth2AuthenticationSuccessHandler: " + e.getMessage());
+            e.printStackTrace();
+
+            // For debugging, redirect to a simple success page instead of failing
+            System.out.println("Redirecting to debug endpoint due to error...");
+            getRedirectStrategy().sendRedirect(request, response, "/debug/auth-detailed");
+        }
     }
 }

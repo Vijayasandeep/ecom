@@ -4,6 +4,7 @@ import com.ecommerce.security.JwtAuthenticationEntryPoint;
 import com.ecommerce.security.JwtRequestFilter;
 import com.ecommerce.security.OAuth2AuthenticationSuccessHandler;
 import com.ecommerce.service.CustomOAuth2UserService;
+import com.ecommerce.service.CustomOidcUserService;
 import com.ecommerce.service.impl.UserDetailsServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -46,6 +47,9 @@ public class SecurityConfig {
     @Autowired
     private OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
 
+    @Autowired
+    private CustomOidcUserService customOidcUserService;
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
@@ -86,12 +90,16 @@ public class SecurityConfig {
                                 "/webjars/**",
                                 "/error"
                         ).permitAll()
+
+                        .requestMatchers("/api/oauth2/**").permitAll()
+                        .requestMatchers("/login").permitAll()
+                        .requestMatchers("/debug").permitAll()
                         // All other requests need authentication
                         .requestMatchers("/swagger-ui.html").permitAll()
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex.authenticationEntryPoint(jwtAuthenticationEntryPoint))
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
                 .oauth2Login(oauth2 -> oauth2
                         .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
                         .successHandler(oAuth2AuthenticationSuccessHandler)

@@ -6,7 +6,9 @@ import com.ecommerce.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,84 +22,198 @@ public class UserController {
     private UserService userService;
 
     @GetMapping("/profile")
-    public ResponseEntity<User> getUserProfile(@AuthenticationPrincipal User user) {
-        return ResponseEntity.ok(user);
+    public ResponseEntity<?> getUserProfile(@AuthenticationPrincipal User user) {
+        try {
+            // Debug logging
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            System.out.println("Authentication: " + auth);
+            System.out.println("Principal: " + (auth != null ? auth.getPrincipal() : "null"));
+            System.out.println("Principal class: " + (auth != null && auth.getPrincipal() != null ? auth.getPrincipal().getClass() : "null"));
+            System.out.println("User from @AuthenticationPrincipal: " + user);
+
+            if (user == null) {
+                // Fallback: try to get user manually
+                if (auth != null && auth.getPrincipal() instanceof User) {
+                    user = (User) auth.getPrincipal();
+                } else if (auth != null && auth.getPrincipal() instanceof String) {
+                    // If principal is username, fetch user
+                    String email = (String) auth.getPrincipal();
+                    user = userService.getUserByEmail(email);
+                }
+
+                if (user == null) {
+                    return ResponseEntity.badRequest().body("User not authenticated properly");
+                }
+            }
+
+            return ResponseEntity.ok(user);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
+        }
     }
 
     @PutMapping("/profile")
-    public ResponseEntity<User> updateUserProfile(
+    public ResponseEntity<?> updateUserProfile(
             @AuthenticationPrincipal User user,
             @RequestBody @Valid UpdateProfileRequest request) {
-        User updatedUser = userService.updateProfile(user.getId(), request);
-        return ResponseEntity.ok(updatedUser);
+        try {
+            if (user == null) {
+                // Fallback authentication handling
+                Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+                if (auth != null && auth.getPrincipal() instanceof User) {
+                    user = (User) auth.getPrincipal();
+                } else {
+                    return ResponseEntity.badRequest().body("User not authenticated");
+                }
+            }
+
+            User updatedUser = userService.updateProfile(user.getId(), request);
+            return ResponseEntity.ok(updatedUser);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
+        }
     }
 
     @PostMapping("/change-password")
-    public ResponseEntity<String> changePassword(
+    public ResponseEntity<?> changePassword(
             @AuthenticationPrincipal User user,
             @RequestBody @Valid ChangePasswordRequest request) {
-        userService.changePassword(user.getId(), request.getCurrentPassword(), request.getNewPassword());
-        return ResponseEntity.ok("Password changed successfully");
+        try {
+            if (user == null) {
+                return ResponseEntity.badRequest().body("User not authenticated");
+            }
+
+            userService.changePassword(user.getId(), request.getCurrentPassword(), request.getNewPassword());
+            return ResponseEntity.ok("Password changed successfully");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
+        }
     }
 
     @PostMapping("/upload-avatar")
-    public ResponseEntity<String> uploadAvatar(
+    public ResponseEntity<?> uploadAvatar(
             @AuthenticationPrincipal User user,
             @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
-        String avatarUrl = userService.uploadAvatar(user.getId(), file);
-        return ResponseEntity.ok(avatarUrl);
+        try {
+            if (user == null) {
+                return ResponseEntity.badRequest().body("User not authenticated");
+            }
+
+            String avatarUrl = userService.uploadAvatar(user.getId(), file);
+            return ResponseEntity.ok(avatarUrl);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
+        }
     }
 
     // Address Management
     @GetMapping("/addresses")
-    public ResponseEntity<List<Address>> getUserAddresses(@AuthenticationPrincipal User user) {
-        List<Address> addresses = userService.getUserAddresses(user.getId());
-        return ResponseEntity.ok(addresses);
+    public ResponseEntity<?> getUserAddresses(@AuthenticationPrincipal User user) {
+        try {
+            if (user == null) {
+                return ResponseEntity.badRequest().body("User not authenticated");
+            }
+
+            List<Address> addresses = userService.getUserAddresses(user.getId());
+            return ResponseEntity.ok(addresses);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
+        }
     }
 
     @PostMapping("/addresses")
-    public ResponseEntity<Address> addAddress(
+    public ResponseEntity<?> addAddress(
             @AuthenticationPrincipal User user,
             @RequestBody @Valid AddAddressRequest request) {
-        Address address = userService.addAddress(user.getId(), request);
-        return ResponseEntity.ok(address);
+        try {
+            if (user == null) {
+                return ResponseEntity.badRequest().body("User not authenticated");
+            }
+
+            Address address = userService.addAddress(user.getId(), request);
+            return ResponseEntity.ok(address);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
+        }
     }
 
     @PutMapping("/addresses/{addressId}")
-    public ResponseEntity<Address> updateAddress(
+    public ResponseEntity<?> updateAddress(
             @AuthenticationPrincipal User user,
             @PathVariable Long addressId,
             @RequestBody @Valid UpdateAddressRequest request) {
-        Address address = userService.updateAddress(user.getId(), addressId, request);
-        return ResponseEntity.ok(address);
+        try {
+            if (user == null) {
+                return ResponseEntity.badRequest().body("User not authenticated");
+            }
+
+            Address address = userService.updateAddress(user.getId(), addressId, request);
+            return ResponseEntity.ok(address);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
+        }
     }
 
     @DeleteMapping("/addresses/{addressId}")
-    public ResponseEntity<Void> deleteAddress(
+    public ResponseEntity<?> deleteAddress(
             @AuthenticationPrincipal User user,
             @PathVariable Long addressId) {
-        userService.deleteAddress(user.getId(), addressId);
-        return ResponseEntity.ok().build();
+        try {
+            if (user == null) {
+                return ResponseEntity.badRequest().body("User not authenticated");
+            }
+
+            userService.deleteAddress(user.getId(), addressId);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
+        }
     }
 
     @PostMapping("/addresses/{addressId}/set-default")
-    public ResponseEntity<Void> setDefaultAddress(
+    public ResponseEntity<?> setDefaultAddress(
             @AuthenticationPrincipal User user,
             @PathVariable Long addressId) {
-        userService.setDefaultAddress(user.getId(), addressId);
-        return ResponseEntity.ok().build();
+        try {
+            if (user == null) {
+                return ResponseEntity.badRequest().body("User not authenticated");
+            }
+
+            userService.setDefaultAddress(user.getId(), addressId);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
+        }
     }
 
     @GetMapping("/dashboard")
-    public ResponseEntity<UserDashboard> getUserDashboard(@AuthenticationPrincipal User user) {
-        UserDashboard dashboard = userService.getUserDashboard(user.getId());
-        return ResponseEntity.ok(dashboard);
+    public ResponseEntity<?> getUserDashboard(@AuthenticationPrincipal User user) {
+        try {
+            if (user == null) {
+                return ResponseEntity.badRequest().body("User not authenticated");
+            }
+
+            UserDashboard dashboard = userService.getUserDashboard(user.getId());
+            return ResponseEntity.ok(dashboard);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
+        }
     }
 
     @PostMapping("/deactivate")
-    public ResponseEntity<String> deactivateAccount(@AuthenticationPrincipal User user) {
-        userService.deactivateAccount(user.getId());
-        return ResponseEntity.ok("Account deactivated successfully");
+    public ResponseEntity<?> deactivateAccount(@AuthenticationPrincipal User user) {
+        try {
+            if (user == null) {
+                return ResponseEntity.badRequest().body("User not authenticated");
+            }
+
+            userService.deactivateAccount(user.getId());
+            return ResponseEntity.ok("Account deactivated successfully");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
+        }
     }
 
     // DTOs for user operations

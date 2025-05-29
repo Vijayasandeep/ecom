@@ -8,11 +8,8 @@ import com.ecommerce.entity.enums.Role;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserService;
-import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
-import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
-import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -20,43 +17,24 @@ import java.util.Collections;
 import java.util.Optional;
 
 @Service
-public class CustomOAuth2UserService extends DefaultOAuth2UserService {
+public class CustomOidcUserService extends OidcUserService {
 
     @Autowired
     private UserRepository userRepository;
 
-    // Handle regular OAuth2 (non-OIDC)
     @Override
-    public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
-        System.out.println("=== CustomOAuth2UserService.loadUser() CALLED (OAuth2) ===");
-
-        OAuth2User oauth2User = super.loadUser(userRequest);
-        return processOAuth2User(userRequest, oauth2User);
-    }
-
-    // Handle OIDC (Google uses this)
     public OidcUser loadUser(OidcUserRequest userRequest) throws OAuth2AuthenticationException {
-        System.out.println("=== CustomOAuth2UserService.loadUser() CALLED (OIDC) ===");
+        System.out.println("=== CustomOidcUserService.loadUser() CALLED ===");
 
-        OidcUserService oidcUserService = new OidcUserService();
-        OidcUser oidcUser = oidcUserService.loadUser(userRequest);
+        OidcUser oidcUser = super.loadUser(userRequest);
 
-        System.out.println("OIDC User loaded: " + oidcUser.getEmail());
+        System.out.println("OIDC User attributes: " + oidcUser.getAttributes());
+        System.out.println("User email: " + oidcUser.getEmail());
+        System.out.println("User name: " + oidcUser.getFullName());
+        System.out.println("Registration ID: " + userRequest.getClientRegistration().getRegistrationId());
 
-        return (OidcUser) processOidcUser(userRequest, oidcUser);
-    }
-
-    private CustomOAuth2User processOAuth2User(OAuth2UserRequest userRequest, OAuth2User oauth2User) {
-        System.out.println("=== processOAuth2User() STARTED ===");
-
-        String registrationId = userRequest.getClientRegistration().getRegistrationId();
-        String email = oauth2User.getAttribute("email");
-        String name = oauth2User.getAttribute("name");
-
-        System.out.println("Processing OAuth2 user - Email: " + email + ", Name: " + name + ", Provider: " + registrationId);
-
-        User user = createOrUpdateUser(registrationId, email, name, oauth2User);
-        return new CustomOAuth2User(oauth2User, user);
+        CustomOAuth2User customUser = processOidcUser(userRequest, oidcUser);
+        return customUser; // CustomOAuth2User now implements OidcUser
     }
 
     private CustomOAuth2User processOidcUser(OidcUserRequest userRequest, OidcUser oidcUser) {
@@ -68,14 +46,9 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
         System.out.println("Processing OIDC user - Email: " + email + ", Name: " + name + ", Provider: " + registrationId);
 
-        User user = createOrUpdateUser(registrationId, email, name, oidcUser);
-        return new CustomOAuth2User(oidcUser, user);
-    }
-
-    private User createOrUpdateUser(String registrationId, String email, String name, OAuth2User oauth2User) {
         if (email == null || email.isEmpty()) {
             System.err.println("❌ EMAIL IS NULL OR EMPTY!");
-            throw new OAuth2AuthenticationException("Email not found from OAuth2 provider");
+            throw new OAuth2AuthenticationException("Email not found from OIDC provider");
         }
 
         System.out.println("Checking if user exists in database...");
@@ -96,20 +69,20 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             System.out.println("✅ Updated existing user: " + user.getId());
         } else {
             System.out.println("❌ User DOES NOT EXIST - Creating new user: " + email);
-            user = registerNewUser(registrationId, email, name, oauth2User);
+            user = registerNewUser(registrationId, email, name, oidcUser);
             System.out.println("✅ Created new user with ID: " + user.getId());
         }
 
-        return user;
+        System.out.println("=== processOidcUser() COMPLETED ===");
+        return new CustomOAuth2User(oidcUser, user);
     }
 
-    private User registerNewUser(String registrationId, String email, String name, OAuth2User oauth2User) {
+    private User registerNewUser(String registrationId, String email, String name, OidcUser oidcUser) {
         System.out.println("=== REGISTERING NEW USER ===");
 
         User user = new User();
 
-        String providerId = oauth2User.getAttribute("sub") != null ?
-                oauth2User.getAttribute("sub").toString() : oauth2User.getAttribute("id").toString();
+        String providerId = oidcUser.getSubject();
 
         System.out.println("Setting user properties:");
         System.out.println("- Email: " + email);
@@ -120,7 +93,8 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         user.setProvider(getAuthProvider(registrationId));
         user.setProviderId(providerId);
         user.setEmail(email);
-        user.setUsername(email); // Use email as username for OAuth users
+        user.setUsername(email);
+        user.setPassword("OAUTH2_NO_PASSWORD"); // Set dummy password for OAuth2 users
         user.setEnabled(true);
         user.setCreatedAt(LocalDateTime.now());
         user.setUpdatedAt(LocalDateTime.now());
@@ -135,7 +109,6 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             }
         }
 
-        // Assign default USER role
         user.setRoles(Collections.singleton(Role.ROLE_USER));
         System.out.println("- Role: " + Role.ROLE_USER);
 
@@ -186,13 +159,10 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         System.out.println("Getting auth provider for: " + registrationId);
         switch (registrationId.toLowerCase()) {
             case "google":
-                System.out.println("Provider: GOOGLE");
                 return AuthProvider.GOOGLE;
             case "github":
-                System.out.println("Provider: GITHUB");
                 return AuthProvider.GITHUB;
             default:
-                System.out.println("Provider: LOCAL (default)");
                 return AuthProvider.LOCAL;
         }
     }
