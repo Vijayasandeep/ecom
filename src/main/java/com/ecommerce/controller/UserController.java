@@ -76,7 +76,7 @@ public class UserController {
         }
     }
 
-    @PostMapping("/change-password")
+    @PutMapping("/change-password")
     public ResponseEntity<?> changePassword(
             @AuthenticationPrincipal User user,
             @RequestBody @Valid ChangePasswordRequest request) {

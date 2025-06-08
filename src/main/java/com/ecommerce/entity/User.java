@@ -22,7 +22,7 @@ import java.util.*;
         @Index(name = "idx_user_phone", columnList = "phone")
 })
 @AllArgsConstructor
-@Builder
+//@Builder
 public class User extends BaseEntity implements UserDetails {
 
     @Id
@@ -119,7 +119,16 @@ public class User extends BaseEntity implements UserDetails {
     // UserDetails implementation
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return Collections.singletonList(new SimpleGrantedAuthority(role.name()));
+        System.out.println("🔑 User.getAuthorities() called for: " + email);
+        System.out.println("📋 User role: " + role);
+
+        if (role == null) {
+            System.out.println("⚠️ Role is null, returning default ROLE_USER");
+            return Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"));
+        }
+        String authority = role.name(); // This should be like "ROLE_ADMIN", "ROLE_USER", etc.
+        System.out.println("✅ Returning authority: " + authority);
+        return Collections.singletonList(new SimpleGrantedAuthority(authority));
     }
 
     @Override
@@ -144,7 +153,7 @@ public class User extends BaseEntity implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return (isActive != null ? isActive : true) && (emailVerified != null ? emailVerified : false);
+        return isActive != null ? isActive : true;
     }
 
     @Override

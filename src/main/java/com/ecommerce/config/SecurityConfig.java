@@ -5,6 +5,7 @@ import com.ecommerce.security.JwtRequestFilter;
 import com.ecommerce.security.OAuth2AuthenticationSuccessHandler;
 import com.ecommerce.service.CustomOAuth2UserService;
 import com.ecommerce.service.CustomOidcUserService;
+import com.ecommerce.service.CustomUserDetailsService;
 import com.ecommerce.service.impl.UserDetailsServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -33,8 +34,9 @@ import java.util.Arrays;
 public class SecurityConfig {
 
     @Autowired
-    private UserDetailsServiceImpl userDetailsService;
+//    private UserDetailsServiceImpl userDetailsService;
 
+    private CustomUserDetailsService userDetailsService;
     @Autowired
     private JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
 
